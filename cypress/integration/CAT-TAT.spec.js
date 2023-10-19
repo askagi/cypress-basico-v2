@@ -1,6 +1,7 @@
 ///  <reference types="Cypress"/>
 
 describe("Central de atendimento ao cliente TAT", () => {
+    const THREE_SECONDS_IN_MS = 3000
     beforeEach(() => {
         cy.visit('./src/index.html');
     })
@@ -10,6 +11,8 @@ describe("Central de atendimento ao cliente TAT", () => {
     });
 
     it('Preencher os campos obrigatórios e enviar o formulário', () => {
+        cy.clock(); /// pausa o relogio do navegado 
+        
         const longText = 'Poema é um texto literário escrito em versos, que são distribuídos em estrofes. Esses versos podem ser regulares, brancos ou livres. Se for composto por versos regulares, esse texto poderá apresentar diversos tipos de rimas. Também pode ser narrativo, dramático ou lírico.'
 
         cy.get('#firstName').type('José');
@@ -17,11 +20,17 @@ describe("Central de atendimento ao cliente TAT", () => {
         cy.get('#email').type('jose@email.com');
         cy.get('#open-text-area').type(longText, { delay: 0 });
         cy.contains('button', 'Enviar').click();
+
         cy.get('.success').should('be.visible');
+
+        cy.tick(THREE_SECONDS_IN_MS) /// a vança no tempo em 3 ms
+
+        cy.get('.success').should('not.be.visible');
 
     })
 
     it('exibe mensagem de erro ao submeter o formulário com um email com formatação inválida', () => {
+        cy.clock();
         const longText = 'Poema é um texto literário escrito em versos, que são distribuídos em estrofes. Esses versos podem ser regulares, brancos ou livres. Se for composto por versos regulares, esse texto poderá apresentar diversos tipos de rimas. Também pode ser narrativo, dramático ou lírico.'
 
         cy.get('#firstName').type('José');
@@ -29,7 +38,12 @@ describe("Central de atendimento ao cliente TAT", () => {
         cy.get('#email').type('joseemail.com');
         cy.get('#open-text-area').type(longText, { delay: 0 });
         cy.contains('button', 'Enviar').click();
+
         cy.get('.error').should('be.visible');
+
+        cy.tick(THREE_SECONDS_IN_MS)
+
+        cy.get('.error').should('not.be.visible');
     });
 
     it('campo telefone se mantém vazio quando um valor não numerico seja preenchido', () => {
@@ -37,6 +51,8 @@ describe("Central de atendimento ao cliente TAT", () => {
     });
 
     it('exibe mensagem de erro quando o telefone se torna obrigatório mas não é preenchido antes do envio do formulário', () => {
+        cy.clock()
+
         cy.get('#firstName').type('José');
         cy.get('#lastName').type('Costa');
         cy.get('#email').type('jose@email.com');
@@ -45,6 +61,10 @@ describe("Central de atendimento ao cliente TAT", () => {
         cy.contains('button', 'Enviar').click();
 
         cy.get('.error').should('be.visible');
+
+        cy.tick(THREE_SECONDS_IN_MS);
+
+        cy.get('.error').should('not.be.visible');
     })
 
     it('preenche e limpa os campos nome, sobrenome, email e telefone', () => {
@@ -56,13 +76,20 @@ describe("Central de atendimento ao cliente TAT", () => {
     })
 
     it('exibe mensagem de erro ao submeter o formulário sem preencher os campos obrigatórios', () => {
+        cy.clock()
         cy.contains('button', 'Enviar').click();
+        
         cy.get('.error').should('be.visible');
+        cy.tick(THREE_SECONDS_IN_MS);
+        cy.get('.error').should('not.be.visible');
     })
 
     it('envia o formuário com sucesso usando um comando customizado', () => {
+        cy.clock()
         cy.fillMandatoryFieldsAndSubmit();
         cy.get('.success').should('be.visible');
+        cy.tick(THREE_SECONDS_IN_MS)
+        cy.get('.success').should('not.be.visible');
     })
 
     it('seleciona um produto (YouTube) por seu texto', () => {
@@ -120,5 +147,57 @@ describe("Central de atendimento ao cliente TAT", () => {
         cy.contains('Talking About Testing').should('be.visible')
     })
 
+    it('exibe e esconde as mensagens de sucesso e erro usando o .invoke', () => {
+        cy.get('.success')
+          .should('not.be.visible')
+          .invoke('show')
+          .should('be.visible')
+          .and('contain', 'Mensagem enviada com sucesso.')
+          .invoke('hide')
+          .should('not.be.visible')
+
+        cy.get('.error')
+          .should('not.be.visible')
+          .invoke('show')
+          .should('be.visible')
+          .and('contain', 'Valide os campos obrigatórios!')
+          .invoke('hide')
+          .should('not.be.visible')
+      })
+
+      it('preenche a area de texto usando o comando invoke', () => {
+        const longText = Cypress._.repeat('asdfçlkj589612470', 20);
+
+        cy.get('#open-text-area').invoke('val', longText).should('have.value', longText)
+      })
+
+      it('faz uma requisição HTTP', () => {
+        cy.request({
+            url: 'https://cac-tat.s3.eu-central-1.amazonaws.com/index.html',
+            followRedirect: false
+        }).then(resp => {
+            expect(resp.status).to.eq(200)
+            expect(resp.statusText).to.eq('OK')
+            expect(resp.body).to.include('CAC TAT')
+        })
+      })
+
+      it('faz uma requisição HTTP. Outra forma de fazer', () => {
+        cy.request('https://cac-tat.s3.eu-central-1.amazonaws.com/index.html').should((resp) => {
+            const {status, statusText, body} = resp;
+            
+            expect(status).to.eq(200);
+            expect(statusText).to.eq('OK'),
+            expect(body).to.include("CAC TAT")
+        })
+      })
+
+      it.only('Encontrar o gato', () => {
+        cy.get('#cat').invoke('show').should('be.visible')
+
+        // alterando o titulo 
+        cy.get('#title').invoke('text', 'CAT TAT')
+        cy.get('#subtitle').invoke('text', 'O gato foi encontrado')
+      })
 
 })
